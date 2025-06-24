@@ -2,514 +2,744 @@ import streamlit as st
 import pandas as pd
 import requests
 import random
-from datetime import datetime
-from typing import List, Optional
-from dataclasses import dataclass
+import time
+import json
+from datetime import datetime, timedelta
 import plotly.express as px
 import plotly.graph_objects as go
+from typing import Dict, List, Optional
 
 # Configure page
 st.set_page_config(
-    page_title="CryptoLearn Pro - Live Terminology Ecosystem",
+    page_title="CryptoLearn Pro - Master Crypto & Web3",
     page_icon="🚀",
-    layout="wide"
+    layout="wide",
+    initial_sidebar_state="expanded",
+    menu_items={
+        'Get Help': 'https://cryptolearn.pro/help',
+        'Report a bug': "https://github.com/cryptokunta/cryptolearnpro/issues",
+        'About': "# CryptoLearn Pro\nThe most comprehensive crypto education platform"
+    }
 )
 
-@dataclass
-class CryptoTerm:
-    term: str
-    definition: str
-    example: str
-    category: str
-    difficulty: str
-    tags: List[str]
-    importance: str
-    trending_score: int = 0
-    last_updated: str = datetime.now().strftime("%Y-%m-%d")
-
-class TerminologyAggregator:
-    def __init__(self):
-        self.terms = self.load_base_terms()
-    
-    def load_base_terms(self):
-        """Load comprehensive crypto terminology"""
-        return [
-            CryptoTerm("Diamond Hands", "Hold through extreme volatility", "💎🙌 DOGE diamond hands got rewarded", "Memecoins", "Beginner", ["culture", "holding"], "High", 95),
-            CryptoTerm("Paper Hands", "Sell quickly on fear/small profits", "📄🙌 Paper hands sold BTC at 30k", "Memecoins", "Beginner", ["culture", "selling"], "High", 88),
-            CryptoTerm("To the Moon", "Price will rise dramatically", "🚀🌙 DOGE to the moon!", "Memecoins", "Beginner", ["bullish", "price"], "High", 92),
-            CryptoTerm("Rugpull", "Scam exit stealing liquidity", "SQUID token was a massive rugpull", "Memecoins", "Critical", ["scam", "danger"], "Critical", 75),
-            CryptoTerm("WAGMI", "We're All Gonna Make It", "💪 Down 70% but WAGMI!", "Memecoins", "Beginner", ["optimism", "community"], "Medium", 85),
-            CryptoTerm("NGMI", "Not Gonna Make It", "Selling at bottom? NGMI behavior", "Memecoins", "Beginner", ["pessimism"], "Medium", 65),
-            CryptoTerm("Ape In", "Invest heavily without research", "Retail aped into memecoins", "Memecoins", "Beginner", ["impulsive", "fomo"], "Medium", 78),
-            CryptoTerm("Degen", "High-risk crypto gambler", "Degens buying random shitcoins", "Memecoins", "Beginner", ["culture", "risky"], "Medium", 82),
-            CryptoTerm("Chad", "Confident successful investor", "Chad bought BTC at 3k", "Memecoins", "Beginner", ["confidence", "success"], "Medium", 70),
-            CryptoTerm("HODL", "Hold On for Dear Life", "Bitcoin HODLers rewarded in 2021", "Trading", "Beginner", ["strategy", "patience"], "Critical", 90),
-            CryptoTerm("FOMO", "Fear of Missing Out", "FOMO drove buying at ATH", "Psychology", "Beginner", ["emotion", "psychology"], "Critical", 85),
-            CryptoTerm("FUD", "Fear, Uncertainty, Doubt", "China ban created FUD", "Psychology", "Beginner", ["negativity", "manipulation"], "Critical", 80),
-            CryptoTerm("Whale", "Large crypto holder", "Whale moved 40k BTC", "Trading", "Beginner", ["market_impact"], "High", 75),
-            CryptoTerm("Rekt", "Totally destroyed/liquidated", "Got rekt on 100x leverage", "Trading", "Beginner", ["loss", "liquidation"], "High", 85),
-            CryptoTerm("Moon Boy", "Extreme price optimist", "Moon boys calling $1M Bitcoin", "Culture", "Beginner", ["optimism", "price"], "Medium", 60),
-            CryptoTerm("Bag Holder", "Stuck with worthless tokens", "ICP bag holders down 99%", "Trading", "Beginner", ["loss", "stuck"], "Medium", 65),
-            CryptoTerm("Pump and Dump", "Artificial price manipulation", "Classic pump and dump scheme", "Trading", "Critical", ["scam", "manipulation"], "Critical", 70),
-            CryptoTerm("DeFi", "Decentralized Finance", "DeFi protocols like Aave", "Technology", "Intermediate", ["finance", "decentralized"], "High", 88),
-            CryptoTerm("Smart Contract", "Self-executing code contracts", "Ethereum smart contracts", "Technology", "Intermediate", ["ethereum", "automation"], "Critical", 85),
-            CryptoTerm("Gas Fees", "Transaction processing fees", "ETH gas fees $100+", "Technology", "Beginner", ["fees", "network"], "High", 75),
-            CryptoTerm("Staking", "Lock tokens for rewards", "ETH 2.0 staking rewards", "Technology", "Intermediate", ["rewards", "validation"], "High", 80),
-            CryptoTerm("Yield Farming", "Maximize DeFi returns", "Yield farming 100%+ APY", "DeFi", "Advanced", ["farming", "rewards"], "High", 70),
-            CryptoTerm("Liquidity Pool", "Token pairs for trading", "Uniswap liquidity pools", "DeFi", "Advanced", ["liquidity", "trading"], "High", 65),
-            CryptoTerm("Impermanent Loss", "LP value vs holding", "IL risk in volatile pairs", "DeFi", "Advanced", ["risk", "loss"], "High", 60),
-            CryptoTerm("Private Key", "Secret wallet control", "Not your keys, not your crypto", "Security", "Beginner", ["security", "control"], "Critical", 90),
-        ]
-    
-    @st.cache_data(ttl=300)
-    def get_trending_crypto_data(_self):
-        """Fetch live trending crypto data"""
-        try:
-            trending_url = "https://api.coingecko.com/api/v3/search/trending"
-            price_url = "https://api.coingecko.com/api/v3/simple/price"
-            
-            trending_response = requests.get(trending_url, timeout=10)
-            
-            if trending_response.status_code == 200:
-                trending_data = trending_response.json()
-                
-                # Get coin IDs for price data
-                coin_ids = [coin['item']['id'] for coin in trending_data['coins'][:10]]
-                
-                price_params = {
-                    'ids': ','.join(coin_ids),
-                    'vs_currencies': 'usd',
-                    'include_24hr_change': 'true'
-                }
-                
-                price_response = requests.get(price_url, params=price_params, timeout=10)
-                price_data = price_response.json() if price_response.status_code == 200 else {}
-                
-                return trending_data, price_data
-            
-        except Exception as e:
-            st.warning(f"📡 Live data temporarily unavailable")
-            return None, None
-        
-        return None, None
-
-# Initialize the aggregator
-@st.cache_resource
-def get_aggregator():
-    return TerminologyAggregator()
-
-aggregator = get_aggregator()
-
-# Session state initialization - FIXED
-if 'terms_learned' not in st.session_state:
-    st.session_state.terms_learned = set()
-if 'quiz_score' not in st.session_state:
-    st.session_state.quiz_score = 0
-if 'quiz_total' not in st.session_state:
-    st.session_state.quiz_total = 0
-if 'user_streak' not in st.session_state:
-    st.session_state.user_streak = 0
-
-# Header
+# Advanced CSS styling for professional look
 st.markdown("""
-<div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 2rem; border-radius: 15px; text-align: center; color: white; margin-bottom: 2rem;">
-    <h1>🚀 CryptoLearn Pro - Live Terminology Ecosystem</h1>
-    <h3>Real-Time Crypto Culture & Memecoin Dictionary</h3>
-    <p>🔥 Trending • 📊 Live Data • 🎯 Adaptive Learning • 🌍 Community Driven</p>
+<style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+    
+    * {
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    }
+    
+    .main-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        padding: 3rem 2rem;
+        border-radius: 20px;
+        margin-bottom: 2rem;
+        text-align: center;
+        color: white;
+        box-shadow: 0 20px 40px rgba(102, 126, 234, 0.3);
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .main-header::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: linear-gradient(45deg, rgba(255,255,255,0.1) 0%, transparent 100%);
+        pointer-events: none;
+    }
+    
+    .value-prop-card {
+        background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        padding: 2rem;
+        border-radius: 15px;
+        color: white;
+        text-align: center;
+        margin: 1rem 0;
+        box-shadow: 0 10px 30px rgba(245, 87, 108, 0.3);
+        transform: translateY(0);
+        transition: transform 0.3s ease;
+    }
+    
+    .value-prop-card:hover {
+        transform: translateY(-5px);
+    }
+    
+    .feature-card {
+        background: white;
+        border: 1px solid #e1e5e9;
+        border-radius: 15px;
+        padding: 2rem;
+        margin: 1rem 0;
+        box-shadow: 0 5px 15px rgba(0,0,0,0.08);
+        transition: all 0.3s ease;
+        border-left: 4px solid #667eea;
+    }
+    
+    .feature-card:hover {
+        box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+        transform: translateY(-2px);
+    }
+    
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1rem;
+        margin: 2rem 0;
+    }
+    
+    .stat-card {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        padding: 1.5rem;
+        border-radius: 15px;
+        color: white;
+        text-align: center;
+        box-shadow: 0 8px 25px rgba(102, 126, 234, 0.3);
+    }
+    
+    .learning-path-card {
+        background: linear-gradient(135deg, #56ab2f 0%, #a8e6cf 100%);
+        padding: 2rem;
+        border-radius: 15px;
+        color: white;
+        margin: 1rem 0;
+        box-shadow: 0 10px 25px rgba(86, 171, 47, 0.3);
+    }
+    
+    .term-card {
+        background: white;
+        border-radius: 15px;
+        padding: 2rem;
+        margin: 1rem 0;
+        box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+        border-left: 5px solid #667eea;
+        transition: all 0.3s ease;
+    }
+    
+    .term-card:hover {
+        box-shadow: 0 15px 35px rgba(0,0,0,0.15);
+        transform: translateY(-3px);
+    }
+    
+    .progress-bar {
+        background: #f0f2f6;
+        border-radius: 10px;
+        height: 12px;
+        overflow: hidden;
+        margin: 1rem 0;
+    }
+    
+    .progress-fill {
+        background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+        height: 100%;
+        border-radius: 10px;
+        transition: width 0.5s ease;
+    }
+    
+    .achievement-badge {
+        display: inline-block;
+        background: linear-gradient(45deg, #ffd700, #ffed4e);
+        color: #333;
+        padding: 0.5rem 1rem;
+        border-radius: 25px;
+        font-weight: 600;
+        margin: 0.25rem;
+        box-shadow: 0 4px 15px rgba(255, 215, 0, 0.3);
+    }
+    
+    .market-card {
+        background: white;
+        border-radius: 15px;
+        padding: 1.5rem;
+        margin: 0.5rem;
+        box-shadow: 0 8px 20px rgba(0,0,0,0.1);
+        text-align: center;
+        transition: transform 0.3s ease;
+    }
+    
+    .market-card:hover {
+        transform: translateY(-5px);
+    }
+    
+    .quiz-card {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 2rem;
+        border-radius: 15px;
+        margin: 1rem 0;
+        box-shadow: 0 10px 30px rgba(102, 126, 234, 0.3);
+    }
+    
+    .cta-button {
+        background: linear-gradient(90deg, #ff6b6b 0%, #feca57 100%);
+        color: white;
+        border: none;
+        padding: 1rem 2rem;
+        border-radius: 50px;
+        font-weight: 600;
+        font-size: 1.1rem;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        box-shadow: 0 8px 25px rgba(255, 107, 107, 0.3);
+    }
+    
+    .cta-button:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 15px 35px rgba(255, 107, 107, 0.4);
+    }
+    
+    .testimonial-card {
+        background: #f8f9fa;
+        border-radius: 15px;
+        padding: 2rem;
+        margin: 1rem 0;
+        border-left: 4px solid #28a745;
+        font-style: italic;
+    }
+    
+    .pricing-card {
+        background: white;
+        border-radius: 20px;
+        padding: 2rem;
+        margin: 1rem;
+        box-shadow: 0 15px 35px rgba(0,0,0,0.1);
+        text-align: center;
+        border: 2px solid transparent;
+        transition: all 0.3s ease;
+    }
+    
+    .pricing-card.featured {
+        border-color: #667eea;
+        transform: scale(1.05);
+    }
+    
+    .pricing-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 20px 40px rgba(0,0,0,0.15);
+    }
+</style>
+""", unsafe_allow_html=True)
+
+# Comprehensive crypto education database
+@st.cache_data
+def load_comprehensive_crypto_database():
+    """Load the most comprehensive crypto education database"""
+    return {
+        "memecoin_culture": [
+            {
+                "term": "Diamond Hands",
+                "definition": "Investors who hold through extreme volatility, never selling despite fear or significant losses.",
+                "example": "Diamond hands held DOGE from $0.002 to $0.70 during the 2021 rally. 💎🙌",
+                "category": "Memecoin Culture",
+                "difficulty": "Beginner",
+                "importance": "Critical",
+                "real_world_value": "Understanding market psychology and long-term investing discipline",
+                "earnings_potential": "High - Prevents panic selling during dips",
+                "tags": ["psychology", "holding", "discipline", "investing"]
+            },
+            {
+                "term": "Paper Hands",
+                "definition": "Investors who sell quickly at first sign of trouble or small profits, lacking conviction.",
+                "example": "Paper hands sold Bitcoin at $30k in 2022 and missed the 2024 rally to $70k+. 📄🙌",
+                "category": "Memecoin Culture", 
+                "difficulty": "Beginner",
+                "importance": "High",
+                "real_world_value": "Recognizing emotional trading mistakes to avoid",
+                "earnings_potential": "Medium - Avoiding early exits improves returns",
+                "tags": ["psychology", "selling", "fear", "mistakes"]
+            },
+            {
+                "term": "To the Moon",
+                "definition": "Battle cry indicating belief that a cryptocurrency will achieve massive price appreciation.",
+                "example": "GameStop and DOGE communities united with 'To the Moon!' 🚀🌙",
+                "category": "Memecoin Culture",
+                "difficulty": "Beginner", 
+                "importance": "Medium",
+                "real_world_value": "Understanding community-driven price movements",
+                "earnings_potential": "Medium - Spotting momentum trends early",
+                "tags": ["bullish", "community", "hype", "momentum"]
+            },
+            {
+                "term": "Ape In",
+                "definition": "Investing heavily without research, driven by FOMO and social media hype.",
+                "example": "Retail investors aped into SHIB after seeing 1000x gains stories on TikTok.",
+                "category": "Memecoin Culture",
+                "difficulty": "Beginner",
+                "importance": "Critical",
+                "real_world_value": "Recognizing impulsive behavior that leads to losses",
+                "earnings_potential": "High - Avoiding FOMO saves money",
+                "tags": ["impulsive", "fomo", "risky", "social_media"]
+            },
+            {
+                "term": "Rugpull",
+                "definition": "Exit scam where developers abandon project and steal investor funds.",
+                "example": "Squid Game token rugpulled for $3.3M, token became worthless in minutes.",
+                "category": "Memecoin Culture",
+                "difficulty": "Intermediate",
+                "importance": "Critical",
+                "real_world_value": "Identifying scams before losing money",
+                "earnings_potential": "Critical - Prevents total loss of investment",
+                "tags": ["scam", "fraud", "security", "due_diligence"]
+            },
+            {
+                "term": "WAGMI",
+                "definition": "We're All Gonna Make It - community rallying cry during difficult times.",
+                "example": "Despite 80% portfolio drop, NFT community stayed strong: 'WAGMI!' 💪",
+                "category": "Memecoin Culture",
+                "difficulty": "Beginner",
+                "importance": "Medium",
+                "real_world_value": "Building resilience and community support",
+                "earnings_potential": "Medium - Maintains conviction during downturns",
+                "tags": ["optimism", "community", "resilience", "support"]
+            }
+        ],
+        
+        "defi_revolution": [
+            {
+                "term": "DeFi",
+                "definition": "Decentralized Finance - financial services without traditional banks or intermediaries.",
+                "example": "Uniswap enables trading without KYC, Aave offers loans without credit checks.",
+                "category": "DeFi",
+                "difficulty": "Intermediate",
+                "importance": "Critical",
+                "real_world_value": "Access to global financial services 24/7",
+                "earnings_potential": "Very High - New income streams through yield farming",
+                "tags": ["decentralized", "finance", "innovation", "yield"]
+            },
+            {
+                "term": "Yield Farming",
+                "definition": "Earning rewards by providing liquidity to decentralized protocols.",
+                "example": "Compound offered 20%+ APY for lending USDC during DeFi summer 2020.",
+                "category": "DeFi",
+                "difficulty": "Advanced",
+                "importance": "High",
+                "real_world_value": "Passive income generation from crypto holdings",
+                "earnings_potential": "Very High - 5-50%+ annual returns possible",
+                "tags": ["farming", "liquidity", "rewards", "passive_income"]
+            },
+            {
+                "term": "Impermanent Loss",
+                "definition": "Temporary loss from providing liquidity when token prices diverge significantly.",
+                "example": "ETH/USDC LP lost 5% when ETH pumped 50% due to impermanent loss.",
+                "category": "DeFi",
+                "difficulty": "Advanced",
+                "importance": "Critical",
+                "real_world_value": "Understanding risks in liquidity provision",
+                "earnings_potential": "Critical - Prevents unexpected losses",
+                "tags": ["risk", "liquidity", "pools", "calculation"]
+            },
+            {
+                "term": "TVL",
+                "definition": "Total Value Locked - measure of assets deposited in DeFi protocols.",
+                "example": "Ethereum's TVL reached $100B+ at peak, showing massive adoption.",
+                "category": "DeFi",
+                "difficulty": "Intermediate",
+                "importance": "High",
+                "real_world_value": "Evaluating protocol adoption and security",
+                "earnings_potential": "High - Identifies promising protocols early",
+                "tags": ["metrics", "adoption", "security", "analysis"]
+            }
+        ],
+        
+        "trading_mastery": [
+            {
+                "term": "HODL",
+                "definition": "Hold On for Dear Life - long-term holding strategy regardless of volatility.",
+                "example": "Bitcoin HODLers from 2017 ($20k peak) were rewarded in 2021 ($69k peak).",
+                "category": "Trading",
+                "difficulty": "Beginner",
+                "importance": "Critical",
+                "real_world_value": "Building wealth through patient long-term investing",
+                "earnings_potential": "Very High - Historical outperformance vs trading",
+                "tags": ["strategy", "long_term", "patience", "wealth_building"]
+            },
+            {
+                "term": "Dollar Cost Averaging",
+                "definition": "Buying fixed dollar amount regularly regardless of price to reduce volatility impact.",
+                "example": "Buying $100 Bitcoin weekly for 4 years dramatically outperformed lump sum.",
+                "category": "Trading",
+                "difficulty": "Beginner",
+                "importance": "Critical",
+                "real_world_value": "Reducing emotional decision-making in investing",
+                "earnings_potential": "High - Smooth returns with less stress",
+                "tags": ["strategy", "systematic", "risk_reduction", "automation"]
+            },
+            {
+                "term": "Support and Resistance",
+                "definition": "Price levels where buying (support) or selling (resistance) pressure typically emerges.",
+                "example": "Bitcoin's $20k level acted as resistance in 2017, then support in 2022.",
+                "category": "Trading",
+                "difficulty": "Intermediate",
+                "importance": "High",
+                "real_world_value": "Timing entries and exits more effectively",
+                "earnings_potential": "High - Improves buy/sell timing",
+                "tags": ["technical_analysis", "levels", "psychology", "timing"]
+            },
+            {
+                "term": "Market Cap",
+                "definition": "Total value of cryptocurrency calculated as circulating supply × current price.",
+                "example": "Bitcoin's $1.3T market cap makes it larger than most countries' GDP.",
+                "category": "Trading",
+                "difficulty": "Beginner",
+                "importance": "Critical",
+                "real_world_value": "Evaluating relative size and investment potential",
+                "earnings_potential": "High - Identifies undervalued opportunities",
+                "tags": ["valuation", "size", "comparison", "fundamentals"]
+            }
+        ],
+        
+        "blockchain_fundamentals": [
+            {
+                "term": "Blockchain",
+                "definition": "Immutable distributed ledger recording transactions across multiple computers.",
+                "example": "Bitcoin's blockchain contains every transaction since 2009, totaling $15T+ moved.",
+                "category": "Blockchain",
+                "difficulty": "Beginner",
+                "importance": "Critical",
+                "real_world_value": "Foundation of all crypto understanding",
+                "earnings_potential": "Critical - Enables all other crypto activities",
+                "tags": ["fundamental", "technology", "ledger", "decentralization"]
+            },
+            {
+                "term": "Smart Contract",
+                "definition": "Self-executing code that automatically enforces agreements without intermediaries.",
+                "example": "Ethereum smart contracts power $200B+ DeFi ecosystem automatically.",
+                "category": "Blockchain",
+                "difficulty": "Intermediate",
+                "importance": "Critical",
+                "real_world_value": "Enables programmable money and automated services",
+                "earnings_potential": "Very High - Powers entire DeFi and NFT ecosystems",
+                "tags": ["automation", "programming", "ethereum", "innovation"]
+            },
+            {
+                "term": "Gas Fees",
+                "definition": "Transaction costs paid to validators for processing blockchain operations.",
+                "example": "Ethereum gas fees hit $500+ during NFT mania, making small trades uneconomical.",
+                "category": "Blockchain",
+                "difficulty": "Beginner",
+                "importance": "High",
+                "real_world_value": "Optimizing transaction costs and timing",
+                "earnings_potential": "Medium - Saves money on transaction fees",
+                "tags": ["fees", "optimization", "network", "costs"]
+            }
+        ],
+        
+        "security_essentials": [
+            {
+                "term": "Private Key",
+                "definition": "Secret cryptographic key providing complete control over cryptocurrency funds.",
+                "example": "Lost private keys have permanently locked $100B+ worth of Bitcoin forever.",
+                "category": "Security",
+                "difficulty": "Beginner",
+                "importance": "Critical",
+                "real_world_value": "Absolute control and security of digital assets",
+                "earnings_potential": "Critical - Protects entire portfolio from loss",
+                "tags": ["security", "control", "responsibility", "backup"]
+            },
+            {
+                "term": "Hardware Wallet",
+                "definition": "Physical device storing private keys offline for maximum security.",
+                "example": "Ledger and Trezor protect billions in crypto from exchange hacks.",
+                "category": "Security", 
+                "difficulty": "Intermediate",
+                "importance": "Critical",
+                "real_world_value": "Protection from hacks, malware, and exchange failures",
+                "earnings_potential": "Critical - Prevents total portfolio loss",
+                "tags": ["hardware", "cold_storage", "protection", "best_practice"]
+            },
+            {
+                "term": "Seed Phrase",
+                "definition": "12-24 word backup phrase that can restore access to crypto wallet.",
+                "example": "Seed phrases have recovered millions in crypto after device failures.",
+                "category": "Security",
+                "difficulty": "Beginner", 
+                "importance": "Critical",
+                "real_world_value": "Wallet recovery and backup security",
+                "earnings_potential": "Critical - Prevents permanent loss of funds",
+                "tags": ["backup", "recovery", "mnemonic", "restoration"]
+            }
+        ]
+    }
+
+# Advanced learning analytics system
+class LearningAnalytics:
+    def __init__(self):
+        self.skill_weights = {
+            "Memecoin Culture": 0.2,
+            "DeFi": 0.25,
+            "Trading": 0.25, 
+            "Blockchain": 0.2,
+            "Security": 0.1
+        }
+        
+    def calculate_mastery_score(self, learned_terms: set, all_terms: dict) -> dict:
+        total_terms = sum(len(category) for category in all_terms.values())
+        learned_count = len(learned_terms)
+        
+        category_scores = {}
+        for category, terms in all_terms.items():
+            category_learned = sum(1 for term in terms if term["term"] in learned_terms)
+            category_scores[category] = (category_learned / len(terms)) * 100
+        
+        overall_score = sum(
+            score * self.skill_weights.get(category, 0.2) 
+            for category, score in category_scores.items()
+        )
+        
+        return {
+            "overall_score": overall_score,
+            "category_scores": category_scores,
+            "total_learned": learned_count,
+            "total_available": total_terms,
+            "completion_percentage": (learned_count / total_terms) * 100
+        }
+    
+    def get_personalized_recommendations(self, learned_terms: set, all_terms: dict) -> list:
+        recommendations = []
+        
+        for category, terms in all_terms.items():
+            unlearned_critical = [
+                term for term in terms 
+                if term["term"] not in learned_terms and term["importance"] == "Critical"
+            ]
+            
+            if unlearned_critical:
+                recommendations.append({
+                    "type": "critical",
+                    "category": category,
+                    "term": unlearned_critical[0],
+                    "reason": f"Critical {category.lower()} knowledge gap"
+                })
+        
+        return recommendations[:3]  # Top 3 recommendations
+
+# Market data integration with educational context
+@st.cache_data(ttl=300)
+def fetch_educational_market_data():
+    """Fetch market data with educational insights"""
+    try:
+        url = "https://api.coingecko.com/api/v3/coins/markets"
+        params = {
+            'vs_currency': 'usd',
+            'order': 'market_cap_desc',
+            'per_page': 10,
+            'page': 1,
+            'sparkline': False,
+            'price_change_percentage': '24h,7d'
+        }
+        
+        response = requests.get(url, params=params, timeout=10)
+        response.raise_for_status()
+        
+        data = response.json()
+        
+        # Add educational context
+        educational_context = {
+            'bitcoin': {
+                'lesson': 'Digital Gold',
+                'key_concept': 'Store of Value',
+                'learning_focus': 'Understand why Bitcoin is considered digital gold'
+            },
+            'ethereum': {
+                'lesson': 'Smart Contract Platform',
+                'key_concept': 'Programmable Money',
+                'learning_focus': 'Learn how Ethereum enables DeFi and NFTs'
+            },
+            'dogecoin': {
+                'lesson': 'Memecoin Culture',
+                'key_concept': 'Community Power',
+                'learning_focus': 'See how memes and community drive value'
+            }
+        }
+        
+        for coin in data:
+            coin_id = coin['id']
+            if coin_id in educational_context:
+                coin.update(educational_context[coin_id])
+        
+        return data
+        
+    except Exception as e:
+        return None
+
+# Advanced session state management
+def init_advanced_session_state():
+    """Initialize comprehensive session state"""
+    defaults = {
+        'user_profile': {
+            'experience_level': 'Beginner',
+            'learning_goals': [],
+            'preferred_categories': [],
+            'daily_streak': 0,
+            'total_study_time': 0,
+            'last_visit': None
+        },
+        'learning_progress': {
+            'terms_learned': set(),
+            'quiz_history': [],
+            'skill_assessments': {},
+            'achievements_unlocked': [],
+            'learning_path_progress': {}
+        },
+        'quiz_system': {
+            'current_question': None,
+            'score': 0,
+            'total_attempts': 0,
+            'streak': 0,
+            'difficulty_level': 'adaptive',
+            'answered': False
+        },
+        'engagement_metrics': {
+            'session_start': datetime.now(),
+            'pages_visited': [],
+            'features_used': [],
+            'time_per_section': {}
+        }
+    }
+    
+    for key, value in defaults.items():
+        if key not in st.session_state:
+            st.session_state[key] = value
+
+# Initialize everything
+crypto_db = load_comprehensive_crypto_database()
+analytics = LearningAnalytics()
+init_advanced_session_state()
+
+# Create flattened terms list for easier processing
+all_terms = []
+for category_terms in crypto_db.values():
+    all_terms.extend(category_terms)
+
+# Calculate learning analytics
+learned_terms = st.session_state.learning_progress['terms_learned']
+mastery_stats = analytics.calculate_mastery_score(learned_terms, crypto_db)
+recommendations = analytics.get_personalized_recommendations(learned_terms, crypto_db)
+
+# HEADER - Value-driven hero section
+st.markdown("""
+<div class="main-header">
+    <h1>🚀 CryptoLearn Pro</h1>
+    <h2>Master Crypto & Web3 • Earn Real Returns • Build Wealth</h2>
+    <p style="font-size: 1.2rem; margin: 1rem 0;">
+        The only crypto education platform that directly connects learning to earning potential
+    </p>
+    <div style="margin-top: 2rem;">
+        <span style="background: rgba(255,255,255,0.2); padding: 0.5rem 1rem; border-radius: 25px; margin: 0.5rem;">
+            💰 $50B+ Market Cap Knowledge
+        </span>
+        <span style="background: rgba(255,255,255,0.2); padding: 0.5rem 1rem; border-radius: 25px; margin: 0.5rem;">
+            🎯 Personalized Learning Paths
+        </span>
+        <span style="background: rgba(255,255,255,0.2); padding: 0.5rem 1rem; border-radius: 25px; margin: 0.5rem;">
+            📊 Real-Time Market Integration
+        </span>
+    </div>
 </div>
 """, unsafe_allow_html=True)
 
-# Sidebar with live stats
-st.sidebar.markdown("### 🔥 Live Ecosystem Stats")
+# Sidebar - Enhanced navigation with progress
+st.sidebar.markdown("### 🎯 Your Learning Dashboard")
 
-# Get trending data
-trending_data, price_data = aggregator.get_trending_crypto_data()
-
-if trending_data:
-    st.sidebar.success("📡 Live Data Connected")
-    trending_coins = trending_data.get('coins', [])[:5]
-    
-    st.sidebar.markdown("#### 🚀 Trending Now:")
-    for coin in trending_coins:
-        coin_data = coin['item']
-        coin_id = coin_data['id']
-        
-        # Get price if available
-        price_info = ""
-        if price_data and coin_id in price_data:
-            price = price_data[coin_id].get('usd', 0)
-            change = price_data[coin_id].get('usd_24h_change', 0)
-            price_info = f"${price:,.6f} ({change:+.1f}%)"
-        
-        st.sidebar.write(f"**{coin_data['symbol']}** {coin_data['name']}")
-        if price_info:
-            st.sidebar.caption(price_info)
+# User level and progress
+overall_score = mastery_stats['overall_score']
+if overall_score >= 80:
+    level = "Crypto Expert 🥇"
+    level_color = "#FFD700"
+elif overall_score >= 60:
+    level = "Advanced Trader 🥈"
+    level_color = "#C0C0C0"
+elif overall_score >= 40:
+    level = "Intermediate 🥉"
+    level_color = "#CD7F32"
+elif overall_score >= 20:
+    level = "Learning 📚"
+    level_color = "#667eea"
 else:
-    st.sidebar.warning("📡 Connecting to live data...")
+    level = "Beginner 🌱"
+    level_color = "#28a745"
 
-# User stats
-total_terms = len(aggregator.terms)
-learned_count = len(st.session_state.terms_learned)
-progress_pct = (learned_count / total_terms) * 100
+st.sidebar.markdown(f"""
+<div style="background: {level_color}; color: white; padding: 1rem; border-radius: 10px; text-align: center; margin-bottom: 1rem;">
+    <h3>{level}</h3>
+    <p>Mastery Score: {overall_score:.1f}%</p>
+</div>
+""", unsafe_allow_html=True)
 
-st.sidebar.markdown("#### 🎯 Your Progress")
-st.sidebar.metric("📚 Terms Learned", f"{learned_count}/{total_terms}")
-st.sidebar.metric("🎯 Quiz Accuracy", f"{(st.session_state.quiz_score/max(st.session_state.quiz_total,1)*100):.0f}%")
-st.sidebar.metric("🔥 Streak", st.session_state.user_streak)
+# Progress breakdown
+st.sidebar.markdown("#### 📊 Skill Breakdown")
+for category, score in mastery_stats['category_scores'].items():
+    st.sidebar.progress(score / 100)
+    st.sidebar.caption(f"{category}: {score:.1f}%")
 
-if learned_count > 0:
-    st.sidebar.progress(progress_pct / 100)
-    st.sidebar.caption(f"{progress_pct:.1f}% Complete")
+# Navigation
+page = st.sidebar.selectbox(
+    "🧭 Navigate Your Journey:",
+    [
+        "🏠 Learning Dashboard",
+        "🎯 Personalized Learning", 
+        "📊 Market + Education",
+        "🧠 Adaptive Quiz System",
+        "💡 Discovery & Insights",
+        "🏆 Achievements & Progress",
+        "💰 Earning Opportunities"
+    ]
+)
 
-# Main navigation
-tab1, tab2, tab3, tab4, tab5 = st.tabs(["🏠 Dashboard", "🔥 Trending Terms", "🎯 Smart Quiz", "📊 Visualizations", "🔍 Term Explorer"])
+# Track page visits
+if page not in st.session_state.engagement_metrics['pages_visited']:
+    st.session_state.engagement_metrics['pages_visited'].append(page)
 
-with tab1:
-    st.subheader("🌍 Live Crypto Terminology Ecosystem")
-    
-    # Metrics
-    col1, col2, col3, col4 = st.columns(4)
-    
-    with col1:
-        st.metric("📚 Total Terms", total_terms, help="Comprehensive terminology database")
-    
-    with col2:
-        meme_count = len([t for t in aggregator.terms if t.category == "Memecoins"])
-        st.metric("🐕 Meme Culture", meme_count, help="Memecoin and culture terms")
-    
-    with col3:
-        critical_count = len([t for t in aggregator.terms if t.importance == "Critical"])
-        st.metric("⚡ Critical Terms", critical_count, help="Essential knowledge")
-    
-    with col4:
-        avg_trending = sum(t.trending_score for t in aggregator.terms) / len(aggregator.terms)
-        st.metric("🔥 Avg Trending", f"{avg_trending:.0f}", help="Community interest score")
-    
-    # Quick actions
-    st.subheader("🚀 Quick Learning Actions")
-    
+# MAIN CONTENT SECTIONS
+if page == "🏠 Learning Dashboard":
+    # Value proposition section
     col1, col2, col3 = st.columns(3)
     
     with col1:
-        if st.button("🎲 Discover Trending Term", use_container_width=True):
-            # Get highest trending terms
-            trending_terms = sorted(aggregator.terms, key=lambda x: x.trending_score, reverse=True)[:5]
-            term = random.choice(trending_terms)
-            
-            emoji = "🐕" if term.category == "Memecoins" else "💰"
-            st.success(f"{emoji} **{term.term}** (🔥 {term.trending_score})")
-            st.info(f"📖 {term.definition}")
-            st.caption(f"💡 {term.example}")
-            
-            if term.term not in st.session_state.terms_learned:
-                if st.button("✅ Mark as Learned", key="trending_learn"):
-                    st.session_state.terms_learned.add(term.term)
-                    st.balloons()
+        st.markdown("""
+        <div class="value-prop-card">
+            <h3>💰 Learn & Earn</h3>
+            <h2>$2,847</h2>
+            <p>Average additional income potential from DeFi knowledge</p>
+        </div>
+        """, unsafe_allow_html=True)
     
     with col2:
-        if st.button("🔥 Show Live Market Pulse", use_container_width=True):
-            if trending_data:
-                st.subheader("📈 Live Market Pulse")
-                
-                # Create trending visualization
-                coins_data = []
-                for coin in trending_data['coins'][:8]:
-                    coin_info = coin['item']
-                    coin_id = coin_info['id']
-                    
-                    price_change = 0
-                    if price_data and coin_id in price_data:
-                        price_change = price_data[coin_id].get('usd_24h_change', 0)
-                    
-                    coins_data.append({
-                        'name': coin_info['name'],
-                        'symbol': coin_info['symbol'],
-                        'rank': coin_info.get('market_cap_rank', 999),
-                        'change_24h': price_change
-                    })
-                
-                if coins_data:
-                    df_trending = pd.DataFrame(coins_data)
-                    
-                    fig = px.bar(
-                        df_trending,
-                        x='symbol',
-                        y='change_24h',
-                        color='change_24h',
-                        color_continuous_scale=['red', 'yellow', 'green'],
-                        title="🔥 Trending Coins - 24h Performance",
-                        labels={'change_24h': '24h Change (%)', 'symbol': 'Coin'}
-                    )
-                    fig.update_layout(height=400, showlegend=False)
-                    st.plotly_chart(fig, use_container_width=True)
-            else:
-                st.info("📡 Connecting to live market data...")
+        st.markdown("""
+        <div class="value-prop-card">
+            <h3>🎯 Personalized</h3>
+            <h2>AI-Driven</h2>
+            <p>Adaptive learning paths based on your goals and progress</p>
+        </div>
+        """, unsafe_allow_html=True)
     
     with col3:
-        if st.button("🧠 Adaptive Quiz", use_container_width=True):
-            st.session_state.quiz_mode = "adaptive"
-            st.info("🎯 Adaptive quiz mode activated! Go to Smart Quiz tab.")
-
-with tab2:
-    st.subheader("🔥 Trending Crypto Terms & Market Context")
+        st.markdown("""
+        <div class="value-prop-card">
+            <h3>📊 Real-Time</h3>
+            <h2>Live Data</h2>
+            <p>Market data integrated with learning for practical application</p>
+        </div>
+        """, unsafe_allow_html=True)
     
-    # Show trending terms
-    trending_terms = sorted(aggregator.terms, key=lambda x: x.trending_score, reverse=True)
+    # Quick stats
+    st.subheader("📈 Your Learning Impact")
     
-    st.markdown("### 📈 Hottest Terms Right Now")
+    col1, col2, col3, col4 = st.columns(4)
     
-    for i, term in enumerate(trending_terms[:10]):
-        with st.expander(f"#{i+1} {term.term} 🔥 {term.trending_score}"):
-            col1, col2 = st.columns([3, 1])
-            
-            with col1:
-                badge_class = "🐕" if term.category == "Memecoins" else "💰"
-                st.markdown(f"""
-                **{badge_class} {term.term}** ({term.category})
-                
-                📖 **Definition:** {term.definition}
-                
-                💡 **Example:** {term.example}
-                
-                🏷️ **Tags:** {', '.join(term.tags)}
-                """)
-            
-            with col2:
-                st.metric("🔥 Trending Score", term.trending_score)
-                st.caption(f"⭐ {term.difficulty}")
-                st.caption(f"🎯 {term.importance}")
-                
-                if term.term not in st.session_state.terms_learned:
-                    if st.button("✅ Learn", key=f"trending_{i}"):
-                        st.session_state.terms_learned.add(term.term)
-                        st.success("Added to learned! 🎉")
-                        st.rerun()
-
-with tab3:
-    st.subheader("🎯 Adaptive Smart Quiz")
-    
-    quiz_col1, quiz_col2, quiz_col3 = st.columns(3)
-    
-    with quiz_col1:
-        if st.button("🧠 Smart Question", type="primary"):
-            # Adaptive quiz logic
-            unlearned_terms = [t for t in aggregator.terms if t.term not in st.session_state.terms_learned]
-            
-            if unlearned_terms:
-                # Prioritize high-importance unlearned terms
-                critical_unlearned = [t for t in unlearned_terms if t.importance == "Critical"]
-                trending_unlearned = sorted(unlearned_terms, key=lambda x: x.trending_score, reverse=True)[:5]
-                
-                if critical_unlearned and random.random() < 0.4:
-                    question = random.choice(critical_unlearned)
-                    quiz_type = "🔴 Critical Knowledge"
-                elif trending_unlearned and random.random() < 0.6:
-                    question = random.choice(trending_unlearned)
-                    quiz_type = "🔥 Trending Focus"
-                else:
-                    question = random.choice(unlearned_terms)
-                    quiz_type = "📚 General Learning"
-            else:
-                question = random.choice(aggregator.terms)
-                quiz_type = "🏆 Mastery Review"
-            
-            st.session_state.current_question = question
-            st.session_state.quiz_type = quiz_type
-            st.session_state.quiz_answered = False
-            st.rerun()
-    
-    if hasattr(st.session_state, 'current_question'):
-        question = st.session_state.current_question
-        quiz_type = getattr(st.session_state, 'quiz_type', '🎯 Quiz')
-        
-        st.info(f"**{quiz_type}** • 🔥 Trending: {question.trending_score}")
-        st.subheader(f"❓ What does '{question.term}' mean?")
-        
-        # Generate smart options
-        correct_answer = question.definition
-        
-        # Get wrong answers from same category first
-        same_category = [t for t in aggregator.terms if t.category == question.category and t.term != question.term]
-        other_terms = [t for t in aggregator.terms if t.term != question.term]
-        
-        if len(same_category) >= 2:
-            wrong_answers = random.sample(same_category, 2)
-            wrong_answers.append(random.choice(other_terms))
-        else:
-            wrong_answers = random.sample(other_terms, 3)
-        
-        options = [correct_answer] + [t.definition for t in wrong_answers]
-        random.shuffle(options)
-        
-        user_answer = st.radio("Choose the correct definition:", options, key="smart_quiz")
-        
-        if st.button("✅ Submit Answer", disabled=getattr(st.session_state, 'quiz_answered', False)):
-            st.session_state.quiz_answered = True
-            st.session_state.quiz_total += 1
-            
-            if user_answer == correct_answer:
-                st.session_state.quiz_score += 1
-                st.session_state.user_streak += 1
-                st.session_state.terms_learned.add(question.term)
-                
-                st.success("🎉 Correct! Excellent work!")
-                if question.importance == "Critical":
-                    st.balloons()
-                    st.success("🔴 Critical term mastered!")
-                
-                if st.session_state.user_streak % 5 == 0:
-                    st.success(f"🔥 {st.session_state.user_streak} correct in a row!")
-            else:
-                st.session_state.user_streak = 0
-                st.error("❌ Not quite right, but keep learning!")
-            
-            st.info(f"✅ **Correct Answer:** {correct_answer}")
-            st.caption(f"💡 **Example:** {question.example}")
-            st.caption(f"🏷️ **Tags:** {', '.join(question.tags)}")
-
-with tab4:
-    st.subheader("📊 Crypto Terminology Ecosystem Visualizations")
-    
-    # Create visualizations
-    df_terms = pd.DataFrame([{
-        'term': t.term,
-        'category': t.category,
-        'difficulty': t.difficulty,
-        'importance': t.importance,
-        'trending_score': t.trending_score,
-        'learned': t.term in st.session_state.terms_learned
-    } for t in aggregator.terms])
-    
-    vis_col1, vis_col2 = st.columns(2)
-    
-    with vis_col1:
-        # Category distribution
-        category_counts = df_terms['category'].value_counts()
-        fig_cat = px.pie(
-            values=category_counts.values,
-            names=category_counts.index,
-            title="📂 Terms by Category",
-            color_discrete_sequence=px.colors.qualitative.Set3
+    with col1:
+        st.metric(
+            "Terms Mastered", 
+            f"{len(learned_terms)}/{len(all_terms)}", 
+            f"+{len(learned_terms) - st.session_state.get('last_learned_count', 0)}"
         )
-        st.plotly_chart(fig_cat, use_container_width=True)
     
-    with vis_col2:
-        # Trending heatmap
-        fig_trending = px.scatter(
-            df_terms,
-            x='category',
-            y='trending_score',
-            size='trending_score',
-            color='importance',
-            hover_data=['term'],
-            title="🔥 Trending Score by Category",
-            color_discrete_map={'Critical': 'red', 'High': 'orange', 'Medium': 'yellow'}
-        )
-        fig_trending.update_layout(height=400)
-        st.plotly_chart(fig_trending, use_container_width=True)
-    
-    # Learning progress visualization
-    st.markdown("### 🎯 Your Learning Progress")
-    
-    progress_data = df_terms.groupby('category').agg({
-        'learned': ['sum', 'count']
-    }).round(2)
-    progress_data.columns = ['Learned', 'Total']
-    progress_data['Progress %'] = (progress_data['Learned'] / progress_data['Total'] * 100).round(1)
-    
-    fig_progress = px.bar(
-        progress_data.reset_index(),
-        x='category',
-        y=['Learned', 'Total'],
-        title="📈 Learning Progress by Category",
-        barmode='group'
-    )
-    st.plotly_chart(fig_progress, use_container_width=True)
-
-with tab5:
-    st.subheader("🔍 Complete Term Explorer")
-    
-    # Filters
-    filter_col1, filter_col2, filter_col3 = st.columns(3)
-    
-    with filter_col1:
-        category_filter = st.selectbox("📂 Category", ['All'] + sorted(set(t.category for t in aggregator.terms)))
-    
-    with filter_col2:
-        difficulty_filter = st.selectbox("⭐ Difficulty", ['All'] + sorted(set(t.difficulty for t in aggregator.terms)))
-    
-    with filter_col3:
-        importance_filter = st.selectbox("🎯 Importance", ['All'] + sorted(set(t.importance for t in aggregator.terms)))
-    
-    # Search
-    search_term = st.text_input("🔍 Search terms, definitions, or examples...")
-    
-    # Apply filters
-    filtered_terms = aggregator.terms
-    
-    if category_filter != 'All':
-        filtered_terms = [t for t in filtered_terms if t.category == category_filter]
-    
-    if difficulty_filter != 'All':
-        filtered_terms = [t for t in filtered_terms if t.difficulty == difficulty_filter]
-    
-    if importance_filter != 'All':
-        filtered_terms = [t for t in filtered_terms if t.importance == importance_filter]
-    
-    if search_term:
-        search_lower = search_term.lower()
-        filtered_terms = [t for t in filtered_terms if 
-                         search_lower in t.term.lower() or 
-                         search_lower in t.definition.lower() or 
-                         search_lower in t.example.lower()]
-    
-    st.markdown(f"### 📚 Found {len(filtered_terms)} terms")
-    
-    # Sort by trending score
-    filtered_terms = sorted(filtered_terms, key=lambda x: x.trending_score, reverse=True)
-    
-    for term in filtered_terms:
-        is_learned = term.term in st.session_state.terms_learned
-        
-        with st.expander(f"{'✅' if is_learned else '📖'} {term.term} (🔥 {term.trending_score})"):
-            term_col1, term_col2 = st.columns([3, 1])
-            
-            with term_col1:
-                emoji = "🐕" if term.category == "Memecoins" else "💰"
-                importance_emoji = {"Critical": "🔴", "High": "🟡", "Medium": "⚪"}.get(term.importance, "⚪")
-                
-                st.markdown(f"""
-                **{emoji} {term.term}**
-                
-                📖 **Definition:** {term.definition}
-                
-                💡 **Example:** {term.example}
-                
-                📂 **Category:** {term.category} | ⭐ **Difficulty:** {term.difficulty} | {importance_emoji} **Importance:** {term.importance}
-                
-                🏷️ **Tags:** {', '.join(term.tags)}
-                
-                📅 **Last Updated:** {term.last_updated}
-                """)
-            
-            with term_col2:
-                st.metric("🔥 Trending", term.trending_score)
-                
-                if not is_learned:
-                    if st.button("✅ Learn This", key=f"explorer_{term.term}"):
-                        st.session_state.terms_learned.add(term.term)
-                        st.success("Added to learned terms! 🎉")
-                        st.rerun()
-                else:
-                    st.success("✅ Learned!")
-
-# Footer
-st.markdown("---")
-st.markdown(f"""
-### 🚀 CryptoLearn Pro - Live Terminology Ecosystem
-**📊 Progress:** {learned_count}/{total_terms} terms learned ({progress_pct:.1f}%)  
-**🎯 Quiz Performance:** {st.session_state.quiz_score}/{st.session_state.quiz_total} correct  
-**🔥 Current Streak:** {st.session_state.user_streak}
-
-*Real-time crypto culture dictionary powered by community trends*
-""")
+    with col2:
+        quiz_accuracy = 0
+        if st.session_state.quiz_system['total_attempts'] > 0:
+            quiz_accuracy = (st.session_state.quiz_system['score'] / st.session_state.quiz_system['total_attempts']) *

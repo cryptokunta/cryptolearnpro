@@ -742,4 +742,646 @@ if page == "🏠 Learning Dashboard":
     with col2:
         quiz_accuracy = 0
         if st.session_state.quiz_system['total_attempts'] > 0:
-            quiz_accuracy = (st.session_state.quiz_system['score'] / st.session_state.quiz_system['total_attempts']) *
+            quiz_accuracy = (st.session_state.quiz_system['score'] / st.session_state.quiz_system['total_attempts']) * 100
+        
+        st.metric(
+            "Quiz Accuracy",
+            f"{quiz_accuracy:.1f}%",
+            f"🔥 {st.session_state.quiz_system['streak']} streak"
+        )
+    
+    with col3:
+        earning_potential = len(learned_terms) * 150  # Estimated earning potential per term
+        st.metric(
+            "Earning Potential",
+            f"${earning_potential:,}",
+            "Based on mastered skills"
+        )
+    
+    with col4:
+        st.metric(
+            "Learning Level",
+            level.split()[0],
+            f"{overall_score:.1f}% mastery"
+        )
+    
+    # Personalized recommendations
+    st.subheader("🎯 AI-Powered Recommendations for You")
+    
+    if recommendations:
+        for i, rec in enumerate(recommendations):
+            term = rec['term']
+            
+            with st.expander(f"🚨 Priority: Learn '{term['term']}' - {rec['reason']}", expanded=i==0):
+                col1, col2 = st.columns([2, 1])
+                
+                with col1:
+                    st.markdown(f"""
+                    **📖 Definition:** {term['definition']}
+                    
+                    **💡 Real-World Value:** {term['real_world_value']}
+                    
+                    **💰 Earning Potential:** {term['earnings_potential']}
+                    
+                    **🎯 Example:** {term['example']}
+                    """)
+                
+                with col2:
+                    if st.button(f"✅ Master This Term", key=f"rec_{i}"):
+                        st.session_state.learning_progress['terms_learned'].add(term['term'])
+                        st.balloons()
+                        st.success(f"🎉 Mastered '{term['term']}'! Earning potential increased!")
+                        st.rerun()
+                    
+                    if st.button(f"🎯 Quiz Me", key=f"quiz_rec_{i}"):
+                        st.session_state.quiz_system['current_question'] = term
+                        st.session_state.quiz_system['answered'] = False
+                        st.info("Quiz ready! Go to Adaptive Quiz System.")
+    else:
+        st.success("🎉 Amazing! You've mastered all critical terms. You're ready for advanced strategies!")
+    
+    # Recent market movements with learning opportunities
+    st.subheader("📊 Market Movements + Learning Opportunities")
+    
+    market_data = fetch_educational_market_data()
+    
+    if market_data:
+        for coin in market_data[:3]:
+            price_change_24h = coin.get('price_change_percentage_24h', 0)
+            
+            col1, col2, col3 = st.columns([1, 2, 1])
+            
+            with col1:
+                st.markdown(f"""
+                <div class="market-card">
+                    <h3>{coin['name']}</h3>
+                    <h2>${coin['current_price']:,.2f}</h2>
+                    <p style="color: {'green' if price_change_24h > 0 else 'red'}">
+                        {price_change_24h:+.2f}% (24h)
+                    </p>
+                </div>
+                """, unsafe_allow_html=True)
+            
+            with col2:
+                if hasattr(coin, 'lesson'):
+                    st.info(f"💡 **Learning Opportunity:** {coin['lesson']} - {coin['learning_focus']}")
+                
+                # Suggest relevant terms to learn
+                if price_change_24h > 10:
+                    st.success("🚀 Big pump! Perfect time to learn: 'To the Moon', 'FOMO', 'Diamond Hands'")
+                elif price_change_24h < -10:
+                    st.warning("📉 Correction happening. Learn about: 'FUD', 'HODL', 'Dollar Cost Averaging'")
+            
+            with col3:
+                if st.button(f"Learn about {coin['name']}", key=f"learn_{coin['id']}"):
+                    # Find related terms
+                    if coin['id'] == 'bitcoin':
+                        suggested_terms = ['HODL', 'Digital Gold', 'Store of Value']
+                    elif coin['id'] == 'ethereum':
+                        suggested_terms = ['Smart Contract', 'DeFi', 'Gas Fees']
+                    else:
+                        suggested_terms = ['Market Cap', 'Trading', 'Volatility']
+                    
+                    st.info(f"💡 Study these terms: {', '.join(suggested_terms)}")
+
+elif page == "🎯 Personalized Learning":
+    st.header("🎯 Your Personalized Learning Journey")
+    
+    # Learning path assessment
+    if not st.session_state.user_profile.get('learning_goals'):
+        st.subheader("🎨 Customize Your Learning Experience")
+        
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            st.markdown("#### 🎯 What's Your Primary Goal?")
+            goal = st.selectbox(
+                "Choose your main objective:",
+                [
+                    "💰 Generate Passive Income through DeFi",
+                    "📈 Become a Profitable Trader", 
+                    "🏗️ Understand Blockchain Technology",
+                    "🐕 Master Memecoin Culture",
+                    "🛡️ Secure My Crypto Assets",
+                    "🚀 Build a Web3 Career"
+                ]
+            )
+        
+        with col2:
+            st.markdown("#### ⭐ Current Experience Level?")
+            experience = st.selectbox(
+                "Be honest about your current level:",
+                [
+                    "🌱 Complete Beginner",
+                    "📚 Some Basic Knowledge", 
+                    "📊 Intermediate Understanding",
+                    "🎯 Advanced but Want to Fill Gaps",
+                    "🥇 Expert Looking for Latest Trends"
+                ]
+            )
+        
+        if st.button("🚀 Create My Learning Path", type="primary"):
+            st.session_state.user_profile['learning_goals'] = [goal]
+            st.session_state.user_profile['experience_level'] = experience
+            st.success("🎉 Learning path created! Refresh to see your personalized curriculum.")
+            st.rerun()
+    
+    else:
+        # Show personalized curriculum
+        user_goal = st.session_state.user_profile['learning_goals'][0]
+        user_level = st.session_state.user_profile['experience_level']
+        
+        st.markdown(f"""
+        <div class="learning-path-card">
+            <h2>🎯 Your Learning Path: {user_goal}</h2>
+            <p><strong>Experience Level:</strong> {user_level}</p>
+            <p><strong>Progress:</strong> {overall_score:.1f}% Complete</p>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        # Generate curriculum based on goals
+        if "DeFi" in user_goal:
+            curriculum = ["DeFi", "Trading", "Security", "Blockchain"]
+            focus_message = "Master DeFi to unlock passive income opportunities worth $1000s annually"
+        elif "Trading" in user_goal:
+            curriculum = ["Trading", "Memecoin Culture", "Blockchain", "DeFi"]
+            focus_message = "Develop trading skills that could generate 20%+ annual returns"
+        elif "Blockchain" in user_goal:
+            curriculum = ["Blockchain", "Security", "DeFi", "Trading"]
+            focus_message = "Build fundamental knowledge for Web3 career opportunities"
+        elif "Memecoin" in user_goal:
+            curriculum = ["Memecoin Culture", "Trading", "Security", "DeFi"]
+            focus_message = "Understand memecoin dynamics to spot 100x opportunities early"
+        elif "Secure" in user_goal:
+            curriculum = ["Security", "Blockchain", "DeFi", "Trading"]
+            focus_message = "Protect your crypto assets from the $3B+ lost annually to hacks"
+        else:
+            curriculum = ["Blockchain", "DeFi", "Trading", "Security"]
+            focus_message = "Build comprehensive Web3 knowledge for career advancement"
+        
+        st.info(f"💡 **Focus:** {focus_message}")
+        
+        # Show curriculum with progress
+        for i, category in enumerate(curriculum):
+            category_score = mastery_stats['category_scores'].get(category, 0)
+            category_terms = crypto_db.get(category.lower().replace(' ', '_'), [])
+            
+            if not category_terms:
+                # Map display names to database keys
+                category_map = {
+                    "DeFi": "defi_revolution",
+                    "Trading": "trading_mastery", 
+                    "Security": "security_essentials",
+                    "Blockchain": "blockchain_fundamentals",
+                    "Memecoin Culture": "memecoin_culture"
+                }
+                category_terms = crypto_db.get(category_map.get(category, ""), [])
+            
+            with st.expander(f"📚 Module {i+1}: {category} ({category_score:.1f}% Complete)", expanded=i==0):
+                col1, col2 = st.columns([3, 1])
+                
+                with col1:
+                    st.progress(category_score / 100)
+                    
+                    # Show next term to learn
+                    unlearned = [t for t in category_terms if t['term'] not in learned_terms]
+                    if unlearned:
+                        next_term = unlearned[0]
+                        st.markdown(f"""
+                        **🎯 Next to Master:** {next_term['term']}
+                        
+                        **Definition:** {next_term['definition']}
+                        
+                        **💰 Earning Potential:** {next_term['earnings_potential']}
+                        """)
+                        
+                        if st.button(f"✅ Master '{next_term['term']}'", key=f"master_{category}_{i}"):
+                            st.session_state.learning_progress['terms_learned'].add(next_term['term'])
+                            st.success(f"🎉 Mastered! Your {category} knowledge increased!")
+                            st.rerun()
+                    else:
+                        st.success(f"🎉 {category} module completed! Moving to next level...")
+                
+                with col2:
+                    completed = len([t for t in category_terms if t['term'] in learned_terms])
+                    st.metric("Progress", f"{completed}/{len(category_terms)}")
+                    
+                    if category_score > 0:
+                        estimated_earning = int(category_score * 50)  # $50 per percentage point
+                        st.metric("Est. Value", f"${estimated_earning}")
+
+elif page == "📊 Market + Education":
+    st.header("📊 Live Market Data with Educational Context")
+    
+    # Market overview with learning integration
+    market_data = fetch_educational_market_data()
+    
+    if market_data:
+        st.subheader("💰 Top Cryptocurrencies + Learning Opportunities")
+        
+        # Market sentiment analysis
+        total_positive = sum(1 for coin in market_data if coin.get('price_change_percentage_24h', 0) > 0)
+        market_sentiment = "Bullish 🐂" if total_positive >= len(market_data) / 2 else "Bearish 🐻"
+        
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            st.metric("Market Sentiment", market_sentiment)
+        with col2:
+            avg_change = sum(coin.get('price_change_percentage_24h', 0) for coin in market_data) / len(market_data)
+            st.metric("Avg 24h Change", f"{avg_change:+.2f}%")
+        with col3:
+            total_mcap = sum(coin.get('market_cap', 0) for coin in market_data) / 1e12
+            st.metric("Total Market Cap", f"${total_mcap:.2f}T")
+        
+        # Individual coin analysis with educational context
+        for coin in market_data[:5]:
+            price_change = coin.get('price_change_percentage_24h', 0)
+            
+            with st.expander(f"📈 {coin['name']} (${coin['current_price']:,.2f}) - {price_change:+.2f}%"):
+                col1, col2, col3 = st.columns([2, 2, 1])
+                
+                with col1:
+                    st.markdown(f"""
+                    **Current Price:** ${coin['current_price']:,.2f}
+                    **Market Cap:** ${coin['market_cap']:,}
+                    **24h Volume:** ${coin['total_volume']:,}
+                    **7d Change:** {coin.get('price_change_percentage_7d_in_currency', 0):+.2f}%
+                    """)
+                
+                with col2:
+                    # Educational context based on coin performance
+                    if price_change > 15:
+                        st.success("🚀 **Strong Pump!** Learn about: FOMO, To the Moon, Market Manipulation")
+                        educational_focus = "Study bubble psychology and risk management"
+                    elif price_change > 5:
+                        st.info("📈 **Steady Growth** Learn about: Technical Analysis, Support Levels")
+                        educational_focus = "Good time to study trend analysis"
+                    elif price_change < -15:
+                        st.error("📉 **Major Correction** Learn about: FUD, Diamond Hands, Dollar Cost Averaging")
+                        educational_focus = "Perfect time to understand bear market psychology"
+                    elif price_change < -5:
+                        st.warning("📊 **Minor Dip** Learn about: Buying the Dip, Volatility")
+                        educational_focus = "Study accumulation strategies"
+                    else:
+                        st.info("😴 **Sideways Action** Learn about: Consolidation, Range Trading")
+                        educational_focus = "Good time for fundamental analysis study"
+                    
+                    st.caption(f"💡 {educational_focus}")
+                
+                with col3:
+                    if hasattr(coin, 'lesson'):
+                        if st.button(f"Learn {coin['lesson']}", key=f"learn_market_{coin['id']}"):
+                            # Find relevant terms
+                            relevant_terms = []
+                            for category_terms in crypto_db.values():
+                                for term in category_terms:
+                                    if any(keyword in term['tags'] for keyword in coin['key_concept'].lower().split()):
+                                        relevant_terms.append(term['term'])
+                            
+                            if relevant_terms:
+                                st.info(f"💡 Study: {', '.join(relevant_terms[:3])}")
+        
+        # Market-based learning suggestions
+        st.subheader("🎯 Today's Market-Based Learning Plan")
+        
+        if market_sentiment == "Bullish 🐂":
+            st.success("""
+            **🐂 Bull Market Learning Focus:**
+            - Study 'FOMO' and 'Bubble Psychology' to avoid overinvestment
+            - Learn 'Profit Taking' strategies 
+            - Understand 'Market Cycles' for better timing
+            """)
+            suggested_terms = ['FOMO', 'To the Moon', 'Market Cap']
+        else:
+            st.info("""
+            **🐻 Bear Market Learning Focus:**
+            - Master 'Dollar Cost Averaging' for accumulation
+            - Study 'Diamond Hands' psychology
+            - Learn about 'Fundamental Analysis' for long-term value
+            """)
+            suggested_terms = ['Diamond Hands', 'Dollar Cost Averaging', 'HODL']
+        
+        # Quick learning buttons
+        col1, col2, col3 = st.columns(3)
+        for i, term_name in enumerate(suggested_terms):
+            # Find the term in our database
+            found_term = None
+            for category_terms in crypto_db.values():
+                for term in category_terms:
+                    if term['term'] == term_name:
+                        found_term = term
+                        break
+                if found_term:
+                    break
+            
+            with [col1, col2, col3][i]:
+                if found_term and st.button(f"📚 Learn '{term_name}'", key=f"market_learn_{i}"):
+                    if found_term['term'] not in learned_terms:
+                        st.session_state.learning_progress['terms_learned'].add(found_term['term'])
+                        st.success(f"🎉 Mastered '{term_name}'!")
+                        st.rerun()
+                    else:
+                        st.info(f"✅ You already know '{term_name}'!")
+
+elif page == "🧠 Adaptive Quiz System":
+    st.header("🧠 AI-Powered Adaptive Quiz System")
+    
+    # Quiz performance dashboard
+    col1, col2, col3, col4 = st.columns(4)
+    
+    with col1:
+        st.metric(
+            "Quiz Score", 
+            f"{st.session_state.quiz_system['score']}/{st.session_state.quiz_system['total_attempts']}"
+        )
+    
+    with col2:
+        accuracy = 0
+        if st.session_state.quiz_system['total_attempts'] > 0:
+            accuracy = (st.session_state.quiz_system['score'] / st.session_state.quiz_system['total_attempts']) * 100
+        st.metric("Accuracy", f"{accuracy:.1f}%")
+    
+    with col3:
+        st.metric("Current Streak", st.session_state.quiz_system['streak'])
+    
+    with col4:
+        est_knowledge_value = len(learned_terms) * 200  # $200 per mastered term
+        st.metric("Knowledge Value", f"${est_knowledge_value:,}")
+    
+    # Adaptive quiz modes
+    st.subheader("🎯 Choose Your Challenge")
+    
+    col1, col2, col3 = st.columns(3)
+    
+    with col1:
+        if st.button("🧠 AI Adaptive Quiz", type="primary", use_container_width=True):
+            # AI selects optimal question based on user progress
+            if len(learned_terms) < 5:
+                # Focus on fundamentals for beginners
+                fundamental_terms = []
+                for term in all_terms:
+                    if term['difficulty'] == 'Beginner' and term['importance'] == 'Critical':
+                        fundamental_terms.append(term)
+                
+                if fundamental_terms:
+                    question = random.choice(fundamental_terms)
+                    quiz_type = "🎯 Fundamental Learning"
+                else:
+                    question = random.choice(all_terms)
+                    quiz_type = "📚 General Knowledge"
+            else:
+                # Advanced adaptive selection
+                unlearned = [t for t in all_terms if t['term'] not in learned_terms]
+                
+                if unlearned:
+                    # Prioritize high-value terms
+                    high_value = [t for t in unlearned if 'High' in t['earnings_potential'] or 'Critical' in t['earnings_potential']]
+                    question = random.choice(high_value if high_value else unlearned)
+                    quiz_type = "💰 High-Value Learning"
+                else:
+                    # Review mode for completed users
+                    question = random.choice(all_terms)
+                    quiz_type = "🔄 Mastery Review"
+            
+            st.session_state.quiz_system['current_question'] = question
+            st.session_state.quiz_system['answered'] = False
+            st.session_state.quiz_type = quiz_type
+            st.rerun()
+    
+    with col2:
+        if st.button("💰 High-Earning Focus", use_container_width=True):
+            # Focus on terms with highest earning potential
+            high_earning_terms = [
+                t for t in all_terms 
+                if 'Very High' in t['earnings_potential'] or 'Critical' in t['earnings_potential']
+            ]
+            
+            if high_earning_terms:
+                unlearned_high_value = [t for t in high_earning_terms if t['term'] not in learned_terms]
+                question = random.choice(unlearned_high_value if unlearned_high_value else high_earning_terms)
+                
+                st.session_state.quiz_system['current_question'] = question
+                st.session_state.quiz_system['answered'] = False
+                st.session_state.quiz_type = "💰 Earning-Focused Quiz"
+                st.rerun()
+    
+    with col3:
+        if st.button("🐕 Memecoin Mastery", use_container_width=True):
+            # Focus on memecoin culture
+            memecoin_terms = crypto_db.get('memecoin_culture', [])
+            
+            if memecoin_terms:
+                question = random.choice(memecoin_terms)
+                st.session_state.quiz_system['current_question'] = question
+                st.session_state.quiz_system['answered'] = False
+                st.session_state.quiz_type = "🐕 Memecoin Culture Quiz"
+                st.rerun()
+    
+    # Display current question
+    if st.session_state.quiz_system.get('current_question'):
+        question = st.session_state.quiz_system['current_question']
+        quiz_type = getattr(st.session_state, 'quiz_type', 'Standard Quiz')
+        
+        st.markdown(f"""
+        <div class="quiz-card">
+            <h3>{quiz_type}</h3>
+            <h2>❓ What does '{question['term']}' mean?</h2>
+            <p><strong>💰 Earning Potential:</strong> {question['earnings_potential']}</p>
+            <p><strong>🎯 Real-World Value:</strong> {question['real_world_value']}</p>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        # Generate multiple choice options
+        correct_answer = question['definition']
+        
+        # Get wrong answers from same category for better difficulty
+        same_category_terms = []
+        for category_terms in crypto_db.values():
+            for term in category_terms:
+                if term['category'] == question['category'] and term['term'] != question['term']:
+                    same_category_terms.append(term)
+        
+        if len(same_category_terms) >= 3:
+            wrong_answers = [t['definition'] for t in random.sample(same_category_terms, 3)]
+        else:
+            # Fallback to random terms
+            other_terms = [t for t in all_terms if t['term'] != question['term']]
+            wrong_answers = [t['definition'] for t in random.sample(other_terms, min(3, len(other_terms)))]
+        
+        options = [correct_answer] + wrong_answers
+        random.shuffle(options)
+        
+        # Quiz interface
+        user_answer = st.radio(
+            "Select the correct definition:",
+            options,
+            key="adaptive_quiz_answer",
+            disabled=st.session_state.quiz_system['answered']
+        )
+        
+        col1, col2, col3 = st.columns(3)
+        
+        with col1:
+            if st.button("✅ Submit Answer", disabled=st.session_state.quiz_system['answered']):
+                st.session_state.quiz_system['answered'] = True
+                st.session_state.quiz_system['total_attempts'] += 1
+                
+                if user_answer == correct_answer:
+                    st.session_state.quiz_system['score'] += 1
+                    st.session_state.quiz_system['streak'] += 1
+                    st.session_state.learning_progress['terms_learned'].add(question['term'])
+                    
+                    st.success("🎉 Correct! Knowledge and earning potential increased!")
+                    
+                    # Bonus for high-value terms
+                    if 'Critical' in question['earnings_potential'] or 'Very High' in question['earnings_potential']:
+                        st.balloons()
+                        st.success("💰 HIGH-VALUE TERM MASTERED! This knowledge can directly increase your income!")
+                    
+                    # Streak bonuses
+                    streak = st.session_state.quiz_system['streak']
+                    if streak == 5:
+                        st.success("🔥 5-question streak! You're on fire!")
+                    elif streak == 10:
+                        st.success("🚀 10-question streak! Expert level achieved!")
+                        st.balloons()
+                
+                else:
+                    st.session_state.quiz_system['streak'] = 0
+                    st.error("❌ Not quite right. Keep learning!")
+                
+                # Show educational context
+                st.info(f"💡 **Correct Answer:** {correct_answer}")
+                st.info(f"🎯 **Example:** {question['example']}")
+                
+                # Show earning potential context
+                if 'High' in question['earnings_potential']:
+                    st.success(f"💰 **Value:** Understanding '{question['term']}' can help you: {question['real_world_value']}")
+        
+        with col2:
+            if st.button("⏭️ Next Question"):
+                # Generate next question with same quiz type
+                if 'Earning-Focused' in quiz_type:
+                    high_earning = [t for t in all_terms if 'Very High' in t['earnings_potential']]
+                    next_question = random.choice(high_earning)
+                elif 'Memecoin' in quiz_type:
+                    next_question = random.choice(crypto_db['memecoin_culture'])
+                else:
+                    # Adaptive selection
+                    unlearned = [t for t in all_terms if t['term'] not in learned_terms]
+                    next_question = random.choice(unlearned if unlearned else all_terms)
+                
+                st.session_state.quiz_system['current_question'] = next_question
+                st.session_state.quiz_system['answered'] = False
+                st.rerun()
+        
+        with col3:
+            if st.button("💡 Get Hint"):
+                # Provide contextual hints
+                hint_keywords = question['tags'][:2]
+                st.info(f"💡 **Hint:** This term relates to: {', '.join(hint_keywords)}")
+                
+                if question['category'] == 'Memecoin Culture':
+                    st.caption("🐕 Think about community behavior and psychology")
+                elif question['category'] == 'DeFi':
+                    st.caption("🏦 Consider decentralized financial services")
+                elif question['category'] == 'Trading':
+                    st.caption("📈 Think about market strategies and analysis")
+    
+    else:
+        st.info("👆 Choose a quiz mode above to start learning and earning!")
+        
+        # Show quiz statistics
+        if st.session_state.quiz_system['total_attempts'] > 0:
+            st.subheader("📊 Your Quiz Performance")
+            
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                # Performance chart
+                accuracy_pct = (st.session_state.quiz_system['score'] / st.session_state.quiz_system['total_attempts']) * 100
+                
+                fig = go.Figure(data=go.Bar(
+                    x=['Correct', 'Incorrect'],
+                    y=[st.session_state.quiz_system['score'], 
+                       st.session_state.quiz_system['total_attempts'] - st.session_state.quiz_system['score']],
+                    marker_color=['#28a745', '#dc3545']
+                ))
+                fig.update_layout(title="Quiz Performance", height=300)
+                st.plotly_chart(fig, use_container_width=True)
+            
+            with col2:
+                st.markdown(f"""
+                ### 🎯 Performance Insights
+                
+                **Accuracy Rate:** {accuracy_pct:.1f}%
+                **Best Streak:** {max(st.session_state.quiz_system.get('best_streak', 0), st.session_state.quiz_system['streak'])}
+                **Knowledge Value:** ${len(learned_terms) * 200:,}
+                
+                ### 🚀 Next Level Goals
+                - **Target Accuracy:** 85%+
+                - **Streak Goal:** 15 questions
+                - **Terms to Master:** {max(0, 50 - len(learned_terms))} remaining
+                """)
+
+elif page == "💡 Discovery & Insights":
+    st.header("💡 Discovery & Deep Insights")
+    
+    # Advanced discovery modes
+    col1, col2, col3 = st.columns(3)
+    
+    with col1:
+        if st.button("🧠 AI Discovery", type="primary", use_container_width=True):
+            # AI-powered term discovery based on user profile
+            unlearned = [t for t in all_terms if t['term'] not in learned_terms]
+            
+            if unlearned:
+                # Score terms by relevance to user goals
+                user_goal = st.session_state.user_profile.get('learning_goals', [''])[0]
+                
+                scored_terms = []
+                for term in unlearned:
+                    score = 0
+                    
+                    # Goal alignment scoring
+                    if 'DeFi' in user_goal and term['category'] == 'DeFi':
+                        score += 3
+                    elif 'Trading' in user_goal and term['category'] == 'Trading':
+                        score += 3
+                    elif 'Memecoin' in user_goal and term['category'] == 'Memecoin Culture':
+                        score += 3
+                    
+                    # Importance scoring
+                    if term['importance'] == 'Critical':
+                        score += 2
+                    elif term['importance'] == 'High':
+                        score += 1
+                    
+                    # Earning potential scoring
+                    if 'Very High' in term['earnings_potential']:
+                        score += 2
+                    elif 'High' in term['earnings_potential']:
+                        score += 1
+                    
+                    scored_terms.append((term, score))
+                
+                # Select highest scoring term
+                if scored_terms:
+                    best_term = max(scored_terms, key=lambda x: x[1])[0]
+                    st.session_state.discovery_term = best_term
+                    st.session_state.discovery_type = "🧠 AI Recommendation"
+            else:
+                st.success("🎉 You've discovered all available terms!")
+    
+    with col2:
+        if st.button("💎 Hidden Gems", use_container_width=True):
+            # Find lesser-known but valuable terms
+            unlearned = [t for t in all_terms if t['term'] not in learned_terms]
+            hidden_gems = [
+                t for t in unlearned 
+                if t['difficulty'] in ['Intermediate', 'Advanced'] and 'High' in t['earnings_potential']
+            ]
+            
+            if hidden_gems:
+                gem = random.choice(hidden_gems)
+                st.session_state.discovery_term = gem

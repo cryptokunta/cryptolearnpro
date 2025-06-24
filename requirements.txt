@@ -1,15 +1,5 @@
-[theme]
-primaryColor = "#667eea"
-backgroundColor = "#ffffff"
-secondaryBackgroundColor = "#f0f2f6"
-textColor = "#262730"
-font = "sans serif"
-
-[server]
-headless = true
-enableCORS = false
-enableXsrfProtection = false
-maxUploadSize = 200
-
-[browser]
-gatherUsageStats = false
+streamlit==1.29.0
+pandas==2.1.4
+plotly==5.17.0
+requests==2.31.0
+Pillow==10.1.0
